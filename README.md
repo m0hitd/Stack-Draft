@@ -50,6 +50,25 @@ Supports **GCP**, **AWS**, and **Azure**.
 
 ---
 
+## System Architecture
+
+![System Architecture — StackDraft AI](public/assets/Project%20Screenshots/system-architecture.png)
+
+The application follows a **client-side AI pipeline** architecture with no backend server:
+
+| Layer | Components | Role |
+|:------|:-----------|:-----|
+| **Google Cloud** | Gemini 2.5 Flash · Firebase Hosting | AI model for generating proposals; CDN for static deployment |
+| **Frontend App** | React 18 · Vite · TypeScript · Mantine v7 · Tabler Icons | SPA core — handles user input, state, and renders all views |
+| **Diagram Engine** | Mermaid.js → Excalidraw | Parses AI-generated Mermaid syntax into interactive, editable canvas diagrams |
+| **Code Output** | Terraform · Prism.js | Renders deployable HCL with syntax highlighting, copy, and download |
+| **SVG Icon Mapper** | Custom mapping layer | Converts generic service names to provider-specific icons (20+ per cloud) |
+| **Target Providers** | GCP · AWS · Azure | Multi-cloud support — switch providers and get native service mappings |
+
+> **Key design decision:** The Gemini API key is bundled client-side via `VITE_GEMINI_API_KEY` for zero-backend simplicity. Suitable for personal and demo use.
+
+---
+
 ## Quick Start
 
 **Prerequisites:** Node.js v18+, a [Gemini API key](https://aistudio.google.com/app/apikey)
