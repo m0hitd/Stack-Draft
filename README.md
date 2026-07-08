@@ -29,7 +29,7 @@ Supports **GCP**, **AWS**, and **Azure**.
 | | |
 |---|---|
 | **AI-generated diagrams** | Three architecture proposals per request, ranked by fit |
-| **Multi-cloud** | GCP · AWS · Azure — switch with one click |
+| **Multi-cloud** | GCP · AWS · Azure  switch with one click |
 | **Interactive canvas** | Excalidraw-powered diagrams you can edit in the browser |
 | **Terraform output** | Ready-to-deploy HCL with syntax highlighting |
 | **Cost estimates** | Monthly USD estimates per proposal |
@@ -52,7 +52,7 @@ Supports **GCP**, **AWS**, and **Azure**.
 
 ## System Architecture
 
-![System Architecture — StackDraft AI](public/assets/Project%20Screenshots/system-architecture.png)
+![System Architecture  StackDraft AI](public/assets/Project%20Screenshots/system-architecture.png)
 
 The application follows a **client-side AI pipeline** architecture with no backend server:
 
@@ -87,17 +87,17 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). That's it — no Firebase required to run locally.
+Open [http://localhost:5173](http://localhost:5173). That's it, no Firebase required to run locally.
 
 ---
 
 ## How It Works
 
 1. **Describe** your project idea in plain English
-2. **Set constraints** — cloud provider, budget, observability preferences
-3. **Generate** — Gemini returns three ranked architecture proposals
-4. **Explore** — switch between proposals, pan and zoom the diagram
-5. **Export** — copy the Terraform code and deploy
+2. **Set constraints** cloud provider, budget, observability preferences
+3. **Generate**  Gemini returns three ranked architecture proposals
+4. **Explore**  switch between proposals, pan and zoom the diagram
+5. **Export**  copy the Terraform code and deploy
 
 ---
 
