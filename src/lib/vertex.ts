@@ -1,4 +1,5 @@
-import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
+import { httpsCallable, FunctionsError } from "firebase/functions";
+import { functions, ensureSignedIn } from "./firebase";
 import { labelMaps } from "./mapSvg";
 import { replaceCaseInsensitive } from "../utils/string";
 
@@ -12,66 +13,19 @@ export interface DiagramProposalInterface {
   title: string;
 }
 
-// Get the API key from environment variables
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-
-if (!apiKey) {
-  console.warn("VITE_GEMINI_API_KEY is not defined. AI requests will fail.");
-}
-
-// Initialize the Google Generative AI client
-const genAI = new GoogleGenerativeAI(apiKey || "");
-
-// Define the response schema using standard SchemaType
-const jsonSchema: Schema = {
-  type: SchemaType.OBJECT,
-  properties: {
-    proposals: {
-      type: SchemaType.ARRAY,
-      items: {
-        type: SchemaType.OBJECT,
-        properties: {
-          title: { type: SchemaType.STRING },
-          description: { type: SchemaType.STRING },
-          diagram: { type: SchemaType.STRING },
-          terraform: { type: SchemaType.STRING },
-          runningCost: { type: SchemaType.STRING },
-        },
-        required: ["title", "description", "diagram", "terraform", "runningCost"],
-      },
-    },
+// Vertex credentials and the Gemini prompt now live server-side in the
+// generateProposals Cloud Function (see functions/src/index.ts). The
+// client never sees an API key — it only calls the callable function
+// behind Firebase Auth + App Check + a per-user rate limit.
+const generateProposalsCallable = httpsCallable<
+  {
+    requirements: string;
+    budget: number | null;
+    isIncludeLoggingAndMonitoring: boolean;
+    cloudProvider: CloudProviderType;
   },
-  required: ["proposals"],
-};
-
-// Initialize the model
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
-  generationConfig: {
-    responseMimeType: "application/json",
-    responseSchema: jsonSchema,
-  },
-});
-
-const promptContext = `
-    I would like to design a system architecture using {CLOUD_PROVIDER} services.
-    The mermaid output should start with the diagram type,
-    and DO NOT APPLY any style or STYLE keyword to cloud service objects.
-
-    Mermaid and terraform has to be in English.
-    DO NOT use any Special characters in the Mermaid output.
-
-    Title, description, and running cost should be in English.
-    Also, give terraform code that would be deployable to {CLOUD_PROVIDER}, and estimate the running cost with a number in USD.
-
-    For the output, I would like 3 proposed Mermaid diagrams.
-
-    Order the proposals based on the best fit for the requirements.
-
-    Here are the system requirements.
-
-    \n
-`;
+  { proposals: DiagramProposalInterface[] }
+>(functions, "generateProposals");
 
 const parseTerraform = (terraform: string) => {
   terraform = replaceCaseInsensitive(terraform, "```terraform\n", "");
@@ -135,39 +89,23 @@ const askVertex = async ({
   cloudProvider: 'GCP' | 'AWS' | 'Azure';
   // isUseMockData?: boolean;
 }): Promise<DiagramProposalInterface[]> => {
-  let cloudSpecificPrompt = promptContext.replace(/{CLOUD_PROVIDER}/g, cloudProvider);
+  await ensureSignedIn();
 
-  let prompt = cloudSpecificPrompt + requirements;
-  if (budget != null) {
-    prompt += `\n This is the monthly budget in USD: ${budget}`;
-  }
+  try {
+    const result = await generateProposalsCallable({
+      requirements,
+      budget,
+      isIncludeLoggingAndMonitoring,
+      cloudProvider,
+    });
 
-  if (isIncludeLoggingAndMonitoring) {
-    if (cloudProvider === 'GCP') {
-      prompt += "\n Please include Cloud Monitoring and Cloud Logging services.";
-    } else if (cloudProvider === 'AWS') {
-      prompt += "\n Please include AWS CloudWatch for monitoring and logging services.";
-    } else if (cloudProvider === 'Azure') {
-      prompt += "\n Please include Azure Monitor and Azure Log Analytics services.";
+    return parseProposals(result.data.proposals);
+  } catch (err) {
+    if (err instanceof FunctionsError && err.code === "resource-exhausted") {
+      throw new Error(err.message);
     }
-  } else {
-    if (cloudProvider === 'GCP') {
-      prompt += "\n Please do not include Cloud Monitoring and Cloud Logging services.";
-    } else if (cloudProvider === 'AWS') {
-      prompt += "\n Please do not include AWS CloudWatch for monitoring and logging services.";
-    } else if (cloudProvider === 'Azure') {
-      prompt += "\n Please do not include Azure Monitor and Azure Log Analytics services.";
-    }
+    throw err;
   }
-
-  const result = await model.generateContent(prompt);
-
-  const response = result.response;
-  const text = response.text();
-  const data = JSON.parse(text);
-
-  const proposals = parseProposals(data["proposals"]);
-  return proposals;
 };
 
 export default askVertex;

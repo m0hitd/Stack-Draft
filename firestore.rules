@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Usage/lock counters are written exclusively by the generateProposals
+// Cloud Function via the Admin SDK, which bypasses these rules entirely.
+// Clients get read-only access to their own usage doc (for showing
+// "next request available in Xm" in the UI) and no write access at all.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usage/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /locks/{uid} {
+      allow read, write: if false;
+    }
+  }
+}
